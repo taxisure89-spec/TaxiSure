@@ -11,8 +11,8 @@ function ProtectedRoute({ children }) {
     }
 
     if (!user) {
-        // Redirect to sign-in page, but save the location they were trying to access
-        return <Navigate to="/signin" state={{ from: location }} replace />;
+        // Redirect to sign-up page, but save the location they were trying to access
+        return <Navigate to="/signup" state={{ from: location }} replace />;
     }
 
     return children;
