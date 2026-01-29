@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 function Header() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
-    const { user, login, logout } = useAuth();
+    const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+    const { user, logout } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
+    const userMenuRef = useRef(null);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -22,8 +24,26 @@ function Header() {
 
     useEffect(() => {
         setIsMenuOpen(false);
+        setIsUserMenuOpen(false);
         document.body.style.overflow = '';
     }, [location]);
+
+    // Close user menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+                setIsUserMenuOpen(false);
+            }
+        };
+
+        if (isUserMenuOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isUserMenuOpen]);
 
     const toggleMenu = () => {
         setIsMenuOpen(!isMenuOpen);
@@ -33,6 +53,19 @@ function Header() {
     const closeMenu = () => {
         setIsMenuOpen(false);
         document.body.style.overflow = '';
+    };
+
+    const toggleUserMenu = () => {
+        setIsUserMenuOpen(!isUserMenuOpen);
+    };
+
+    const handleLogout = async () => {
+        try {
+            await logout();
+            setIsUserMenuOpen(false);
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
     };
 
     const isHomePage = location.pathname === '/';
@@ -103,6 +136,26 @@ function Header() {
                         <li className="nav__item nav__item--mobile">
                             <Link to="/contact" className="nav__link" onClick={closeMenu}>Contact</Link>
                         </li>
+                        {user && (
+                            <>
+                                <li className="nav__item nav__item--mobile">
+                                    <Link to="/delete" className="nav__link" onClick={closeMenu}>Delete Account</Link>
+                                </li>
+                                <li className="nav__item nav__item--mobile">
+                                    <button onClick={handleLogout} className="nav__link nav__link--button">Sign Out</button>
+                                </li>
+                            </>
+                        )}
+                        {!user && (
+                            <>
+                                <li className="nav__item nav__item--mobile">
+                                    <Link to="/signin" className="nav__link" onClick={closeMenu}>Sign In</Link>
+                                </li>
+                                <li className="nav__item nav__item--mobile">
+                                    <Link to="/signup" className="nav__link" onClick={closeMenu}>Sign Up</Link>
+                                </li>
+                            </>
+                        )}
                     </ul>
 
                     <button className="nav__close" id="nav-close" aria-label="Close menu" onClick={closeMenu}>
@@ -115,31 +168,132 @@ function Header() {
 
                 <div className="nav__actions">
                     {!user ? (
-                        <button id="login-btn" className="nav__login" onClick={login} aria-label="Sign in with Google">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                                <circle cx="12" cy="7" r="4" />
-                            </svg>
-                            <span>Sign In</span>
-                        </button>
-                    ) : (
-                        <div id="user-info" className="nav__user">
-                            <img
-                                id="user-avatar"
-                                src={user.photoURL || '/logo.png'}
-                                alt="User"
-                                className="nav__user-avatar"
-                            />
-                            <span id="user-name" className="nav__user-name">
-                                {user.displayName?.split(' ')[0] || 'User'}
-                            </span>
-                            <button onClick={logout} className="nav__logout" aria-label="Sign out">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                                    <polyline points="16 17 21 12 16 7" />
-                                    <line x1="21" y1="12" x2="9" y2="12" />
+                        <div className="nav__auth-wrapper" ref={userMenuRef}>
+                            <button
+                                className="nav__auth-button"
+                                onClick={toggleUserMenu}
+                                aria-label="Authentication menu"
+                                aria-expanded={isUserMenuOpen}
+                            >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                    <circle cx="12" cy="7" r="4" />
+                                </svg>
+                                <span>Account</span>
+                                <svg
+                                    className={`nav__auth-arrow ${isUserMenuOpen ? 'nav__auth-arrow--open' : ''}`}
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                >
+                                    <polyline points="6 9 12 15 18 9" />
                                 </svg>
                             </button>
+
+                            {isUserMenuOpen && (
+                                <div className="nav__auth-menu">
+                                    <Link
+                                        to="/signin"
+                                        className="nav__auth-menu-item"
+                                        onClick={() => setIsUserMenuOpen(false)}
+                                    >
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                                            <polyline points="10 17 15 12 10 7" />
+                                            <line x1="15" y1="12" x2="3" y2="12" />
+                                        </svg>
+                                        Sign In
+                                    </Link>
+                                    <Link
+                                        to="/signup"
+                                        className="nav__auth-menu-item"
+                                        onClick={() => setIsUserMenuOpen(false)}
+                                    >
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                                            <circle cx="8.5" cy="7" r="4" />
+                                            <line x1="20" y1="8" x2="20" y2="14" />
+                                            <line x1="23" y1="11" x2="17" y2="11" />
+                                        </svg>
+                                        Sign Up
+                                    </Link>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="nav__user-wrapper" ref={userMenuRef}>
+                            <button
+                                className="nav__user"
+                                onClick={toggleUserMenu}
+                                aria-label="User menu"
+                                aria-expanded={isUserMenuOpen}
+                            >
+                                <img
+                                    src={user.photoURL || '/logo.png'}
+                                    alt="User"
+                                    className="nav__user-avatar"
+                                />
+                                <span className="nav__user-name">
+                                    {user.displayName?.split(' ')[0] || 'User'}
+                                </span>
+                                <svg
+                                    className={`nav__user-arrow ${isUserMenuOpen ? 'nav__user-arrow--open' : ''}`}
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                >
+                                    <polyline points="6 9 12 15 18 9" />
+                                </svg>
+                            </button>
+
+                            {isUserMenuOpen && (
+                                <div className="nav__user-menu">
+                                    <div className="nav__user-menu-header">
+                                        <div className="nav__user-menu-avatar">
+                                            {user.photoURL ? (
+                                                <img src={user.photoURL} alt={user.displayName || 'User'} />
+                                            ) : (
+                                                <div className="nav__user-menu-avatar-placeholder">
+                                                    {(user.displayName || user.email || 'U')[0].toUpperCase()}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="nav__user-menu-info">
+                                            <p className="nav__user-menu-name">{user.displayName || 'User'}</p>
+                                            <p className="nav__user-menu-email">{user.email}</p>
+                                        </div>
+                                    </div>
+                                    <div className="nav__user-menu-divider"></div>
+                                    <Link
+                                        to="/delete"
+                                        className="nav__user-menu-item"
+                                        onClick={() => setIsUserMenuOpen(false)}
+                                    >
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                        Delete Account
+                                    </Link>
+                                    <div className="nav__user-menu-divider"></div>
+                                    <button
+                                        onClick={handleLogout}
+                                        className="nav__user-menu-item nav__user-menu-item--logout"
+                                    >
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                                            <polyline points="16 17 21 12 16 7" />
+                                            <line x1="21" y1="12" x2="9" y2="12" />
+                                        </svg>
+                                        Sign Out
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
                     <Link to="/contact" className="nav__contact">Contact</Link>
